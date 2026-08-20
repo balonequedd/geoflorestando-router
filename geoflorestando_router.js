@@ -1,4 +1,4 @@
-// geoflorestando-router — Worker "de bordas" que decide, por PATH, qual
+// geoflorestando-router — Worker "de borda" que decide, por PATH, qual
 // projeto Cloudflare Pages responde em geoflorestando.com:
 //   /app  e  /app/*        -> Pages do sistema (o que hoje é app.geoflorestando.com)
 //   qualquer outro caminho -> Pages institucional (landing page)
@@ -106,6 +106,17 @@ export default {
 
     if (url.pathname === "/api/contato" && request.method === "POST") {
       return handleContato(request, env);
+    }
+
+    // DIAGNÓSTICO TEMPORÁRIO — remover depois de resolver o problema da
+    // secret não chegar no ambiente. Não expõe o valor da chave, só se ela
+    // existe, o tamanho, e quais nomes de binding o Worker enxerga.
+    if (url.pathname === "/api/debug-env") {
+      return jsonResponse({
+        hasResendKey: !!env.RESEND_API_KEY,
+        resendKeyLength: env.RESEND_API_KEY ? env.RESEND_API_KEY.length : 0,
+        envKeys: Object.keys(env),
+      });
     }
 
     if (!APP_ORIGIN || !LANDING_ORIGIN) {
