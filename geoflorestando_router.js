@@ -1,4 +1,4 @@
-// geoflorestando-router — Worker "de borda" que decide, por PATH, qual
+// geoflorestando-router — Worker "de bordas" que decide, por PATH, qual
 // projeto Cloudflare Pages responde em geoflorestando.com:
 //   /app  e  /app/*        -> Pages do sistema (o que hoje é app.geoflorestando.com)
 //   qualquer outro caminho -> Pages institucional (landing page)
