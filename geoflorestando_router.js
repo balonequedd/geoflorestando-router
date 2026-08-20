@@ -28,6 +28,20 @@ export default {
       );
     }
 
+    // "/app" sem barra final precisa virar "/app/" antes de servir o
+    // conteúdo. Motivo: o index.html só usa caminhos relativos ("./favicon.ico",
+    // "./manifest.json"...). Sem a barra, o navegador resolve esses caminhos
+    // relativos à RAIZ do domínio (não a "/app/"), e favicon/manifest/ícones
+    // quebram — foi exatamente esse sintoma observado (sistema carregou, mas
+    // o ícone da aba não). Com a barra, tudo resolve certo, sem precisar
+    // mexer no index.html (que continua idêntico ao servido em
+    // app.geoflorestando.com).
+    if (url.pathname === "/app") {
+      const redirectUrl = new URL(url.toString());
+      redirectUrl.pathname = "/app/";
+      return Response.redirect(redirectUrl.toString(), 301);
+    }
+
     const isApp = url.pathname === "/app" || url.pathname.startsWith("/app/");
 
     let target;
