@@ -108,17 +108,6 @@ export default {
       return handleContato(request, env);
     }
 
-    // DIAGNÓSTICO TEMPORÁRIO — remover depois de resolver o problema da
-    // secret não chegar no ambiente. Não expõe o valor da chave, só se ela
-    // existe, o tamanho, e quais nomes de binding o Worker enxerga.
-    if (url.pathname === "/api/debug-env") {
-      return jsonResponse({
-        hasResendKey: !!env.RESEND_API_KEY,
-        resendKeyLength: env.RESEND_API_KEY ? env.RESEND_API_KEY.length : 0,
-        envKeys: Object.keys(env),
-      });
-    }
-
     if (!APP_ORIGIN || !LANDING_ORIGIN) {
       return new Response(
         "geoflorestando-router: defina APP_ORIGIN e LANDING_ORIGIN no wrangler.toml (ou no dashboard, em Settings > Variables).",
