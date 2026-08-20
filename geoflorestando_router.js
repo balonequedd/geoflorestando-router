@@ -15,11 +15,98 @@
 // variável de ambiente no wrangler.toml — ver geoflorestando_router.wrangler.toml)
 // com a URL *.pages.dev de cada projeto Cloudflare Pages.
 
+// Endereço que recebe as mensagens do formulário de contato da landing.
+const CONTATO_DESTINO = "contato@geoflorestando.com";
+
+function jsonResponse(obj, status) {
+  return new Response(JSON.stringify(obj), {
+    status: status || 200,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// POST /api/contato — recebe o formulário da landing e envia por e-mail via
+// Resend, no mesmo padrão já usado pelo worker.js do geosiga-api
+// (env.RESEND_API_KEY, POST https://api.resend.com/emails). É um secret
+// PRÓPRIO deste Worker — precisa ser configurado aqui também (não herda do
+// geosiga-api), com `npx wrangler secret put RESEND_API_KEY`.
+async function handleContato(request, env) {
+  if (!env.RESEND_API_KEY) {
+    return jsonResponse({ ok: false, erro: "Envio de e-mail não configurado no servidor." }, 503);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return jsonResponse({ ok: false, erro: "Corpo da requisição inválido." }, 400);
+  }
+
+  const nome = String(body?.nome || "").trim().slice(0, 200);
+  const email = String(body?.email || "").trim().slice(0, 200);
+  const mensagem = String(body?.mensagem || "").trim().slice(0, 5000);
+  // Honeypot: campo escondido no formulário via CSS — só bots costumam
+  // preenchê-lo. Se vier preenchido, finge sucesso sem enviar nada.
+  const honeypot = String(body?.empresa || "").trim();
+
+  if (honeypot) {
+    return jsonResponse({ ok: true });
+  }
+  if (!nome || !email || !mensagem) {
+    return jsonResponse({ ok: false, erro: "Preencha nome, e-mail e mensagem." }, 400);
+  }
+  if (!EMAIL_RE.test(email)) {
+    return jsonResponse({ ok: false, erro: "E-mail inválido." }, 400);
+  }
+
+  const corpo = [
+    `Nova mensagem pelo formulário de contato da landing (geoflorestando.com).`,
+    ``,
+    `Nome: ${nome}`,
+    `E-mail: ${email}`,
+    ``,
+    mensagem,
+  ].join("\n");
+
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "GeoFlorestando <alertas@geoflorestando.com>",
+        to: [CONTATO_DESTINO],
+        subject: `[GeoFlorestando][Contato] Mensagem de ${nome}`,
+        text: corpo,
+        reply_to: [email],
+      }),
+    });
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      console.error("Resend erro:", resp.status, detalhe);
+      return jsonResponse({ ok: false, erro: "Falha ao enviar. Tente novamente em instantes." }, 502);
+    }
+  } catch (e) {
+    console.error("Resend exceção:", e.message);
+    return jsonResponse({ ok: false, erro: "Falha ao enviar. Tente novamente em instantes." }, 502);
+  }
+
+  return jsonResponse({ ok: true });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const APP_ORIGIN = env.APP_ORIGIN;         // ex: https://geosiga-app.pages.dev
     const LANDING_ORIGIN = env.LANDING_ORIGIN; // ex: https://geoflorestando-landing.pages.dev
+
+    if (url.pathname === "/api/contato" && request.method === "POST") {
+      return handleContato(request, env);
+    }
 
     if (!APP_ORIGIN || !LANDING_ORIGIN) {
       return new Response(
