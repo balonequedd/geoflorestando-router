@@ -1,0 +1,20 @@
+# wrangler.toml do NOVO Worker "geoflorestando-router" — separado do
+# "geosiga-api" que já existe (não mexe nele). Este Worker só decide
+# roteamento por path em geoflorestando.com; ele não toca em D1/R2/e-mail.
+
+name = "geoflorestando-router"
+main = "geoflorestando_router.js"
+compatibility_date = "2024-12-01"
+
+# Rota: este Worker responde por TODO o domínio raiz.
+# Ajustar zone_name se o domínio no Cloudflare estiver com outro nome de zona.
+routes = [
+  { pattern = "geoflorestando.com/*", zone_name = "geoflorestando.com" },
+  { pattern = "www.geoflorestando.com/*", zone_name = "geoflorestando.com" }
+]
+
+[vars]
+# APP_ORIGIN confirmado no dashboard (projeto Pages "geosiga-frontend").
+APP_ORIGIN = "https://geosiga-frontend.pages.dev"
+# LANDING_ORIGIN confirmado no dashboard (projeto Pages "geoflorestando-landing").
+LANDING_ORIGIN = "https://geoflorestando-landing.pages.dev"
